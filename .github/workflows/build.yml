@@ -1,27 +1,28 @@
-name: Build and Analyze
-
+name: SonarCloud
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
     types: [opened, synchronize, reopened]
-
 jobs:
-  build-and-analyze:
-    name: Build and Analyze with SonarCloud
+  build:
+    name: Build and analyze
     runs-on: ubuntu-latest
-
+    env:
+      BUILD_WRAPPER_OUT_DIR: ./build_wrapper # Directory where build-wrapper output will be placed
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Build with Build-wrapper
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Install sonar-scanner and build-wrapper
+        uses: SonarSource/sonarcloud-github-c-cpp@v2
+      - name: Run build-wrapper
         run: |
-          # Run your build commands with the Build-wrapper
-          build-wrapper-linux-x86-64 --out-dir bw-output make
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }}
+      - name: Run sonar-scanner
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
